@@ -31,6 +31,7 @@ public class FilesReader implements ActionListener {
     /**
      * @param args the command line arguments
      */
+    
     JTextField jte; // Extension of files
     JTextField jtt; // Text to search
     JTextField jtd; // Directory
@@ -93,7 +94,7 @@ public class FilesReader implements ActionListener {
 
             public void focusGained(FocusEvent e) {
                 if (jte.getText().trim().equals("Тип файла")) {
-                    jte.setText("txt");
+                    jte.setText("log");
                 } else {
                     jte.setText(jte.getText());
                 }
@@ -101,7 +102,7 @@ public class FilesReader implements ActionListener {
 
             public void focusLost(FocusEvent e) {
                 if (jte.getText().trim().equals("")) {
-                    jte.setText("txt");
+                    jte.setText("log");
                 } else {
                     jte.setText(jte.getText());
                 }
@@ -109,11 +110,11 @@ public class FilesReader implements ActionListener {
         });
 
         jtd = new JTextField(15); // поле для задачи "area" поиска файлов
-        jtd.setText("C:\\Users\\Данил\\Desktop");
+        jtd.setText("Укажите вашу директорию");
         jtd.addFocusListener(new FocusListener() {
 
             public void focusGained(FocusEvent e) {
-                if (jtd.getText().trim().equals("C:\\Users\\Данил\\Desktop")) {
+                if (jtd.getText().trim().equals("Укажите вашу директорию")) {
                     jtd.setText("");
                 } else {
                     jtd.setText(jtd.getText());
@@ -122,7 +123,7 @@ public class FilesReader implements ActionListener {
 
             public void focusLost(FocusEvent e) {
                 if (jtd.getText().trim().equals("")) {
-                    jtd.setText("C:\\Users\\Данил\\Desktop");
+                    jtd.setText("Укажите вашу директорию");
                 } else {
                     jtd.setText(jtd.getText());
                 }
@@ -195,7 +196,11 @@ public class FilesReader implements ActionListener {
                                 подходящего расширения, но без искомого текста 
          */
         int ListOfFiles = files.size(); // переменная для того, чтобы корректно задать размер массива
-
+        try {
+            finalize();
+        } catch (Throwable ex) {
+            Logger.getLogger(FilesReader.class.getName()).log(Level.SEVERE, null, ex);
+        }
         if (ListOfFiles > 0) {
             String Arr[] = new String[ListOfFiles];
 
