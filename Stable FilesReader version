@@ -1,0 +1,326 @@
+import javax.swing.*;
+import javax.swing.JScrollPane;
+import java.awt.*;
+import javax.swing.JTextArea;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+import java.awt.event.*;
+import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.FileSystemException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import static java.nio.file.Paths.get;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+
+/**
+ *
+ * @author Данил
+ */
+public class FilesReader implements ActionListener {
+
+    /**
+     * @param args the command line arguments
+     */
+    JTextField ExtField; // Extension of files
+    JTextField TextField; // Text to search
+    JTextField RootField; // Root
+    JButton Enter = new JButton("Enter");
+    JScrollPane pane = new JScrollPane();
+    JTextArea area = new JTextArea();
+
+    public FilesReader() {
+
+        JFrame jfrm = new JFrame("Поиск файлов по их формату");
+        jfrm.setLocationRelativeTo(null);
+        jfrm.setLayout(new FlowLayout());
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize(); // задаю размеры окна, чтобы корректно отображалось на любому устройстве
+        double width = screenSize.getWidth();
+        double height = screenSize.getHeight();
+
+        int h = (int) height;
+        int w = (int) width;
+        h = h / 2;
+        w = w / 2;
+
+        jfrm.setSize(w, h);
+
+        jfrm.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        jfrm.setLayout(null);
+
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setBorder(BorderFactory.createEmptyBorder(4, 4, 80, 4));
+        area.setSize(new Dimension(350, 300));
+        pane.getViewport().add(area);
+        area.setText("Тут будет текст из файла");
+
+        TextField = new JTextField(10); // поле для ввода текста, который будет искаться в файлах
+        TextField.setText("Искомый текст");
+        TextField.addFocusListener(new FocusListener() {
+
+            public void focusGained(FocusEvent e) {
+                if (TextField.getText().trim().equals("Искомый текст")) {
+                    TextField.setText("");
+                } else {
+                    TextField.setText(TextField.getText());
+                }
+            }
+
+            public void focusLost(FocusEvent e) {
+                if (TextField.getText().trim().equals("")) {
+                    TextField.setText("Искомый текст");
+                } else {
+                    TextField.setText(TextField.getText());
+                }
+            }
+        });
+
+        ExtField = new JTextField(10); // поле для задачи типа файлов 
+        ExtField.setText("Тип файла");
+        ExtField.addFocusListener(new FocusListener() {
+
+            public void focusGained(FocusEvent e) {
+                if (ExtField.getText().trim().equals("Тип файла")) {
+                    ExtField.setText("log");
+                } else {
+                    ExtField.setText(ExtField.getText());
+                }
+            }
+
+            public void focusLost(FocusEvent e) {
+                if (ExtField.getText().trim().equals("")) {
+                    ExtField.setText("log");
+                } else {
+                    ExtField.setText(ExtField.getText());
+                }
+            }
+        });
+
+        RootField = new JTextField(15); // поле для задачи "area" поиска файлов
+        RootField.setText("C:/");
+        RootField.addFocusListener(new FocusListener() {
+
+            public void focusGained(FocusEvent e) {
+                if (RootField.getText().trim().equals("C:/")) {
+                    RootField.setText("C:/");
+                } else {
+                    RootField.setText(RootField.getText());
+                }
+            }
+
+            public void focusLost(FocusEvent e) {
+                if (RootField.getText().trim().equals("")) {
+                    RootField.setText("C:/");
+                } else {
+                    RootField.setText(RootField.getText());
+                }
+            }
+        });
+
+        TextField.setActionCommand("SearchText");
+        ExtField.setActionCommand("FileExtension");
+        RootField.setActionCommand("SearchDirectory");
+
+        Enter.addActionListener(this);
+
+        jfrm.add(TextField); // я понимаю, что код будет проверяться на компьютере и в силу того, что дисплеи более менее одинаковы это было не обязательно, однако всё же решил сделать это, как вариант исключение потенциальных ошибок
+        TextField.setBounds(w / 25, (int) (h * 0.01), w / 7, h / 10);
+        jfrm.add(ExtField);
+        ExtField.setBounds(w / 25 + w / 7, (int) (h * 0.01), w / 7, h / 10);
+        jfrm.add(RootField);
+        RootField.setBounds((int) (w / 25 + w / 3.5), (int) (h * 0.01), w / 7, h / 10);
+        jfrm.add(Enter);
+        Enter.setBounds(w / 5, (int) (h * 0.5), w / 7, h / 10);
+        jfrm.add(new JScrollPane(pane));
+        jfrm.add(pane);
+        pane.setBounds(w / 2, (int) (h * 0.01), (int) (w * 0.45), (int) (h * 0.6));
+        jfrm.setVisible(true);
+
+    }
+
+    public class Tree {
+            DefaultMutableTreeNode root = new DefaultMutableTreeNode("Пути до искомых файлов");
+             public DefaultMutableTreeNode getroot(){
+                return root;
+             }
+        public Tree() {
+            JFrame frame = new JFrame("Дерево");
+            JTree tree;
+            DefaultTreeModel treeModel;
+            
+            treeModel = new DefaultTreeModel(root);
+            tree = new JTree(treeModel);
+
+            frame.add(tree);
+            frame.add(new JScrollPane(tree));
+
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setTitle("Дерево");
+            frame.pack();
+            frame.setVisible(true);
+        }
+    }
+
+    public class SearchFile {
+        //путь до папки откуда надо осуществлять поиск
+
+        private final String texty = TextField.getText();
+        private final String rooty = RootField.getText();
+        //расширение которое мы будем искать
+        private final String exts = ExtField.getText();
+        //глубина обхода дерева каталогов при макс будет максимальная глубина
+        //можешь параметр добавить в конструктор и управлять им
+        private final int maxDepth = Integer.MAX_VALUE;
+        //сюда будем ложить пути к файлам с нуными  расширениями
+        private final LinkedList<String> paths = new LinkedList<>();
+        // сюда просаем пути которые не удалось прочитать
+        private final LinkedList<String> failed = new LinkedList<>();
+
+        public LinkedList<String> getPaths() {
+            return paths;
+        }
+
+        public LinkedList<String> getFailed() {
+            return failed;
+        }
+
+        public String getTexty() {
+            return texty;
+        }
+
+        public String getRoot() {
+            return rooty;
+        }
+
+        public String getExts() {
+            return exts;
+        }
+
+        public int getmaxDepth() {
+            return maxDepth;
+        }
+
+        // Этому методу передаётся значение из TextField, т.е. переменную rooty
+        public boolean IsCompareNeeded(String TextFromTheField) {
+            return !(TextFromTheField.equalsIgnoreCase("Искомый текст") || TextFromTheField.equalsIgnoreCase(""));
+        }
+
+        // Проверяем содержит ли файл искомый текст
+        public boolean IsContains(String text) {
+            return text.contains(TextField.getText());
+        }
+
+        // Читаем файл
+        public String readFile(Path file) {
+
+            String content = "";
+            try {
+                content = new String(Files.readAllBytes(file));
+            } catch (AccessDeniedException ADE) {
+                System.out.println("AccesDeniedException для файла:" + file);
+            } catch (FileSystemException FSE) {
+                System.out.println("FileSystemException для файла:" + file);
+            } catch (IOException ex) {
+                Logger.getLogger(FilesReader.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            return content;
+        }
+
+        public void startSearch() {
+            //Набор опций при обходк
+            Set<FileVisitOption> opts = Collections.emptySet();
+            try {
+                Files.walkFileTree(get(rooty), opts, maxDepth, new MyFileVisitor());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private class MyFileVisitor implements FileVisitor<Path> {
+            //действия при посещении каталога
+
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                //я думаю не пригодится
+                /*
+            System.out.println("Каждый раз печатаю посещение каталога");
+            System.out.format("Каталог: %s%n", dir); //печать каждого посещения каталога
+                 */
+                return FileVisitResult.CONTINUE;
+            }
+
+            //действия при посещении каждого файла
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                String exe = null;
+                boolean NeedOrNot = IsCompareNeeded(getTexty()); // задаём переменную, чтобы много раз не вызывать метод
+                //ищем расширение в название файла , всякое бывает решил искать сплитом последнняя фраза после точки и будет расширением
+                for (String temp : file.getFileName().toString().split("\\.")) {
+                    exe = temp;
+                }
+                if (!NeedOrNot && exts.contains(exe)) {
+                    paths.offer(file.toString());
+                    System.out.println(file.toString());
+                    DefaultMutableTreeNode node = new DefaultMutableTreeNode("file.toString()");
+                    
+                } else if (NeedOrNot && exts.contains(exe)) {
+                    if (attrs.size() < 15728640) {
+                        String TextFromFile;
+                        TextFromFile = readFile(file);
+                        if (TextFromFile.contains(getTexty())) {
+                            paths.offer(file.toString());
+                            System.out.println(file.toString());
+                        }
+                    } else {
+                        failed.offer(file.toString());
+                        System.out.println("Этот файл больше 15 МБ:" + " " + file.toString());
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            //В случае неудачной попытки доступа к path, данный путь в виде строки добавляется в лист failed ему подобных,
+            // и программа продолжает обход, не посещая его поддиректории
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                failed.add(file.toString());
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+
+            //Завершают работу все вышеописанные методы, возвращая «результаты посещения» (FileVisitResult) объекта, которые принадлежат enum множеству и могут принимать следующие значения:
+//
+//CONTINUE — продолжает обход дерева;
+//TERMINATE — заканчивает обход дерева;
+//SKIP_SUBTREE — продолжает обход, без захода в данную директорию;
+//SKIP_SIBLINGS — исключает из обхода «родственников» данного файла или директории;
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                return FileVisitResult.CONTINUE;
+            }
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent ae) {
+        new SearchFile().startSearch();
+    }
+
+    public static void main(String args[]) {
+        SwingUtilities.invokeLater(() -> {
+            new FilesReader();
+        });
+    }
+}
